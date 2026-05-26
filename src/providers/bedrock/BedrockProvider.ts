@@ -8,7 +8,7 @@ import { CombinedRateLimiter, CombinedLimitConfig } from '../../core/limits/Comb
 import { AWSSSOAuth } from '../../auth/AWSSSOAuth.js';
 import { AWSAuthProvider } from '../../auth/AWSAuthProvider.js';
 import { IAuthProvider } from '../../auth/IAuthProvider.js';
-import { RateLimitError, AuthenticationError } from '../../core/errors/LLMError.js';
+import { RateLimitError, AuthenticationError, ValidationError, ContextLengthError, ModelNotFoundError, ProviderError } from '../../core/errors/LLMError.js';
 
 /** Configuration for BedrockProvider. Auth is derived from profile/credentials, not passed directly. */
 export interface BedrockProviderConfig extends Omit<ModelConfig, 'auth'> {
@@ -58,6 +58,7 @@ export class BedrockProvider extends Model {
 
         this.awsAuth = awsAuth;
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const clientConfig: any = {
             region: config.region
         };
@@ -80,8 +81,8 @@ export class BedrockProvider extends Model {
         if (config.sharedRateLimiter) {
             this.rateLimiter = config.sharedRateLimiter;
         } else if (config.rateLimits) {
-            const rl = config.rateLimits as any;
-            if (rl.rpm && typeof rl.rpm === 'object' && 'type' in rl.rpm) {
+            const rl = config.rateLimits;
+            if ('rpm' in rl && typeof rl.rpm === 'object' && rl.rpm !== null && 'type' in (rl.rpm as object)) {
                 this.rateLimiter = new CombinedRateLimiter(config.rateLimits as CombinedLimitConfig);
             } else {
                 this.rateLimiter = new BottleneckRateLimiter(config.rateLimits as BottleneckLimitConfig);
@@ -137,9 +138,17 @@ export class BedrockProvider extends Model {
 
             if (errorName === 'ValidationException') {
                 if (error.message?.includes('Input is too long')) {
-                    throw new Error('Context window exceeded');
+                    const estimated = this.estimateTokens(context);
+                    const totalTokens = estimated.input + estimated.output;
+                    throw new ContextLengthError(
+                        totalTokens,
+                        totalTokens,
+                        'Context window exceeded',
+                        {},
+                        error
+                    );
                 }
-                throw new Error(`Validation error: ${error.message}`);
+                throw new ValidationError('model_input', `Validation error: ${error.message}`, { provider: 'bedrock' }, error);
             }
 
             if (errorName === 'AccessDeniedException') {
@@ -151,7 +160,7 @@ export class BedrockProvider extends Model {
             }
 
             if (errorName === 'ResourceNotFoundException') {
-                throw new Error(`Model not found: ${this.modelId}`);
+                throw new ModelNotFoundError(this.modelId, 'Model not found', { provider: 'bedrock' }, error);
             }
 
             throw error;
@@ -166,7 +175,7 @@ export class BedrockProvider extends Model {
         const response = await this.client.send(command);
         const stream = (response as any).stream;
         if (!stream) {
-            throw new Error('No stream in ConverseStream response');
+            throw new ProviderError('bedrock', 'No stream in ConverseStream response', { modelId: this.modelId });
         }
 
         let toolCalls: Array<{ id: string; name: string; args: string }> = [];

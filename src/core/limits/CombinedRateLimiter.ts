@@ -113,11 +113,13 @@ export class CombinedRateLimiter {
     }
   }
 
-  on(event: string, callback: any): void {
+  on(event: string, callback: (...args: unknown[]) => void): void {
     if (this.rpmLimiter) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       this.rpmLimiter.on(event as any, callback);
     }
     if (this.tpmLimiter) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       this.tpmLimiter.on(event as any, callback);
     }
   }

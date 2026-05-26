@@ -1,6 +1,7 @@
 import { AnthropicContent } from './AnthropicTypes.js';
 import { OpenAIContent } from '../../core/types/Message.js';
 
+/** Converts an Anthropic-native content block to the universal OpenAIContent format. */
 export function contentToOpenAI(block: AnthropicContent | { type: 'text'; text: string; cache_control?: any }): OpenAIContent {
     if (block.type === 'text') {
         if ('cache_control' in block && block.cache_control) {

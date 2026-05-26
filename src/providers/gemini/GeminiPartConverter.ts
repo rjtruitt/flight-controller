@@ -1,6 +1,7 @@
 import { GeminiPart } from './GeminiTypes.js';
 import { OpenAIContent } from '../../core/types/Message.js';
 
+/** Converts a Gemini-native Part to the universal OpenAIContent format. */
 export function partToOpenAI(part: GeminiPart): OpenAIContent {
     if ('text' in part) {
         return { type: 'text', text: part.text };

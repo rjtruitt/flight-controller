@@ -1,6 +1,7 @@
 import { BedrockContent } from './BedrockTypes.js';
 import { OpenAIContent } from '../../core/types/Message.js';
 
+/** Converts a Bedrock-native content block to the universal OpenAIContent format. */
 export function contentToOpenAI(block: BedrockContent): OpenAIContent {
     if ('text' in block) {
         return { type: 'text', text: block.text };

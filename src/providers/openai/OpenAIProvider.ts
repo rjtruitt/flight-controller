@@ -3,6 +3,7 @@ import { Model, ModelConfig } from '../../core/model/Model.js';
 import { ModelResponse, StreamChunk } from '../../core/types/Response.js';
 import { OpenAIContext } from '../../core/types/Context.js';
 import { OpenAIOpenAITranslator } from './OpenAIOpenAITranslator.js';
+import { RateLimitError, AuthenticationError } from '../../core/errors/LLMError.js';
 
 /** Configuration for OpenAI-compatible providers. Auth is handled via apiKey. */
 export interface OpenAIProviderConfig extends Omit<ModelConfig, 'auth'> {
@@ -60,10 +61,10 @@ export class OpenAIProvider extends Model {
             return rosettaResponse;
         } catch (error: any) {
             if (error.status === 429) {
-                throw new Error('Rate limit exceeded');
+                throw new RateLimitError('Rate limit exceeded', { provider: 'openai' }, undefined, error);
             }
             if (error.status === 401) {
-                throw new Error('Authentication failed: Invalid API key');
+                throw new AuthenticationError('Authentication failed: Invalid API key', { provider: 'openai' });
             }
 
             throw error;
@@ -139,10 +140,10 @@ export class OpenAIProvider extends Model {
             }
         } catch (error: any) {
             if (error.status === 429) {
-                throw new Error('Rate limit exceeded');
+                throw new RateLimitError('Rate limit exceeded', { provider: 'openai' }, undefined, error);
             }
             if (error.status === 401) {
-                throw new Error('Authentication failed: Invalid API key');
+                throw new AuthenticationError('Authentication failed: Invalid API key', { provider: 'openai' });
             }
             throw error;
         }

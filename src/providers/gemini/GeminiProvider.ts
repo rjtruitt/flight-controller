@@ -4,6 +4,7 @@ import { ModelResponse } from '../../core/types/Response.js';
 import { OpenAIContext } from '../../core/types/Context.js';
 import { GeminiOpenAITranslator } from './GeminiOpenAITranslator.js';
 import { GeminiResponse } from './GeminiTypes.js';
+import { RateLimitError, AuthenticationError, ProviderError } from '../../core/errors/LLMError.js';
 
 /** Configuration for Google Gemini. Auth is handled via API key. */
 export interface GeminiProviderConfig extends Omit<ModelConfig, 'auth'> {
@@ -90,13 +91,13 @@ export class GeminiProvider extends Model {
 
             if (errorMessage.includes('quota') || errorMessage.includes('limit')) {
                 if (errorMessage.includes('daily') || errorMessage.includes('session')) {
-                    throw new Error('Session limit exceeded');
+                    throw new ProviderError('gemini', 'Session limit exceeded', { modelId: this.modelId }, undefined, error);
                 }
-                throw new Error('Rate limit exceeded');
+                throw new RateLimitError('Rate limit exceeded', { provider: 'gemini' }, undefined, error);
             }
 
             if (errorMessage.includes('api key') || errorMessage.includes('unauthorized')) {
-                throw new Error('Authentication failed: Invalid API key');
+                throw new AuthenticationError('Authentication failed: Invalid API key', { provider: 'gemini' });
             }
 
             throw error;

@@ -1,3 +1,41 @@
+/**
+ * Flight Controller — LLM provider abstraction layer.
+ *
+ * Public API surface. All exports are intended for external consumption.
+ *
+ * ## Providers
+ * - {@link AnthropicProvider} — Anthropic Messages API
+ * - {@link OpenAIProvider} — OpenAI and compatible endpoints (DeepSeek, Groq, Ollama, etc.)
+ * - {@link BedrockProvider} — AWS Bedrock Converse API
+ * - {@link GeminiProvider} — Google Gemini generateContent API
+ *
+ * ## Core
+ * - {@link Model} — Abstract base class (Template Method pattern)
+ * - {@link ModelIdentity} — Immutable model descriptor
+ * - {@link OpenAIContext} — Universal request format ("Rosetta Stone")
+ * - {@link ModelResponse} — Universal response format
+ * - {@link IOpenAITranslator} — Bidirectional provider ↔ OpenAI adapter
+ *
+ * ## Rate Limiting
+ * - {@link RateLimit} — Rolling-window rate limiter (TPM/RPM/TPH/RPH)
+ * - {@link SessionLimit} — Per-day/month session caps
+ * - {@link AdaptiveRateLimiter} — Learns limits from provider throttling
+ * - {@link BottleneckRateLimiter} — Production-grade queue via bottleneck library
+ *
+ * ## Error Handling
+ * - {@link LLMError} — Base typed error with code and context
+ * - {@link RateLimitError}, {@link AuthenticationError}, {@link ProviderError}, etc.
+ * - {@link IErrorHandler} — Pluggable error classification
+ * - {@link BlockerEvent} — Observer-pattern events for orchestration decisions
+ *
+ * ## Auth
+ * - {@link IAuthProvider} — Auth provider interface (10 implementations)
+ * - {@link AWSSSOAuth} — AWS SSO OIDC device code grant
+ * - {@link AWSAuthProvider} — Composite AWS credential chain
+ *
+ * @module llm-flight-controller
+ */
+
 export { BedrockProvider, BedrockProviderConfig } from './providers/bedrock/BedrockProvider.js';
 export { OpenAIProvider, OpenAIProviderConfig, OpenAIProviders } from './providers/openai/OpenAIProvider.js';
 export { AnthropicProvider, AnthropicProviderConfig } from './providers/anthropic/AnthropicProvider.js';

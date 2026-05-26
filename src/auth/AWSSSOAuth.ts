@@ -43,6 +43,7 @@ export class AWSSSOAuth implements IAuthProvider {
                 return;
             }
         } catch {
+            // Cache miss — will re-authenticate below
         }
 
         throw new AuthenticationError('AWS SSO token not found or expired. Authentication required.');

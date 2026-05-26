@@ -2,6 +2,7 @@ import { OpenAIContext } from '../types/Context.js';
 import { ModelResponse } from '../types/Response.js';
 import { IErrorHandler } from '../errors/IErrorHandler.js';
 
+/** Result of a stateless health probe. Indicates whether the model is reachable and accepting traffic. */
 export interface HealthCheckResult {
     available: boolean;
     error?: string;
@@ -11,12 +12,17 @@ export interface HealthCheckResult {
     suggestedCooldown?: number;
 }
 
+/** Interface for models that support stateless health probing. */
 export interface ModelHealthCheckable {
     sendRequest(context: OpenAIContext): Promise<ModelResponse>;
     errorHandler?: IErrorHandler;
     hasSessionLimits(): boolean;
 }
 
+/**
+ * Perform a stateless health check by sending a minimal "hi" request with maxTokens=1.
+ * Returns whether the model is reachable and any remaining quota from response headers.
+ */
 export async function checkModelHealth(
     model: ModelHealthCheckable
 ): Promise<HealthCheckResult> {
@@ -56,6 +62,10 @@ export async function checkModelHealth(
     }
 }
 
+/**
+ * Extract remaining API quota from provider response headers.
+ * Supports OpenAI (x-ratelimit-remaining-requests) and Anthropic (anthropic-ratelimit-requests-remaining) formats.
+ */
 export function extractRemainingQuota(response: ModelResponse): number | undefined {
     const headers = response.metadata?.custom?.headers as Record<string, string> | undefined;
     if (!headers) return undefined;

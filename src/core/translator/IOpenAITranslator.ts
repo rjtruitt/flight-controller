@@ -19,7 +19,7 @@ export interface IContentAdapter {
     extractToolCalls?(text: string): Array<{
         id: string;
         name: string;
-        arguments: any;
+        arguments: Record<string, unknown>;
     }>;
 }
 
@@ -109,8 +109,8 @@ export class BaseContentAdapter implements IContentAdapter {
         return adapted;
     }
 
-    extractToolCalls(text: string): Array<{ id: string; name: string; arguments: any }> {
-        const calls: Array<{ id: string; name: string; arguments: any }> = [];
+    extractToolCalls(text: string): Array<{ id: string; name: string; arguments: Record<string, unknown> }> {
+        const calls: Array<{ id: string; name: string; arguments: Record<string, unknown> }> = [];
 
         const regex = /Tool Call: (\w+)\((.*?)\)/g;
         let match;
@@ -128,6 +128,7 @@ export class BaseContentAdapter implements IContentAdapter {
                     arguments: args
                 });
             } catch (e) {
+                // Malformed JSON in tool call — skip this match, try next
             }
         }
 

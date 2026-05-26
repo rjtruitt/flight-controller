@@ -3,6 +3,7 @@ import { Model, ModelConfig } from '../../core/model/Model.js';
 import { ModelResponse } from '../../core/types/Response.js';
 import { OpenAIContext } from '../../core/types/Context.js';
 import { AnthropicOpenAITranslator } from './AnthropicOpenAITranslator.js';
+import { RateLimitError, AuthenticationError, ProviderError } from '../../core/errors/LLMError.js';
 
 export interface AnthropicProviderConfig extends Omit<ModelConfig, 'auth'> {
     apiKey: string;
@@ -63,12 +64,12 @@ export class AnthropicProvider extends Model {
             if (error.status === 429) {
                 const errorMessage = error.message?.toLowerCase() || '';
                 if (errorMessage.includes('daily') || errorMessage.includes('session')) {
-                    throw new Error('Session limit exceeded');
+                    throw new ProviderError('anthropic', 'Session limit exceeded', { modelId: this.modelId }, undefined, error);
                 }
-                throw new Error('Rate limit exceeded');
+                throw new RateLimitError('Rate limit exceeded', { provider: 'anthropic' }, undefined, error);
             }
             if (error.status === 401) {
-                throw new Error('Authentication failed: Invalid API key');
+                throw new AuthenticationError('Authentication failed: Invalid API key', { provider: 'anthropic' });
             }
 
             throw error;

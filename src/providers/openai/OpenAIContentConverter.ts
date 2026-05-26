@@ -1,6 +1,7 @@
 import { OpenAINativeContent } from './OpenAITypes.js';
 import { OpenAIContent } from '../../core/types/Message.js';
 
+/** Converts an OpenAI-native content block to the universal OpenAIContent format. */
 export function contentToOpenAI(block: OpenAINativeContent): OpenAIContent | null {
     if (block.type === 'text') {
         return { type: 'text', text: block.text };

@@ -24,7 +24,6 @@
   "homepage": "https://github.com/rjtruitt/llm-flight-controller#readme",
   "files": [
     "dist",
-    "src",
     "README.md",
     "LICENSE"
   ],
