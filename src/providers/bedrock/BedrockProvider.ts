@@ -7,6 +7,7 @@ import { BottleneckRateLimiter, BottleneckLimitConfig } from '../../core/limits/
 import { CombinedRateLimiter, CombinedLimitConfig } from '../../core/limits/CombinedRateLimiter.js';
 import { AWSSSOAuth } from '../../auth/AWSSSOAuth.js';
 import { AWSAuthProvider } from '../../auth/AWSAuthProvider.js';
+import { ProviderAuthGuard } from '../../auth/ProviderAuthGuard.js';
 import { IAuthProvider } from '../../auth/IAuthProvider.js';
 import { RateLimitError, AuthenticationError, ValidationError, ContextLengthError, ModelNotFoundError, ProviderError } from '../../core/errors/LLMError.js';
 
@@ -37,7 +38,7 @@ export class BedrockProvider extends Model {
     public readonly rateLimiter?: BottleneckRateLimiter | CombinedRateLimiter;
 
     constructor(config: BedrockProviderConfig) {
-        const awsAuth: IAuthProvider = config.profile
+        const rawAuth: IAuthProvider = config.profile
             ? new AWSSSOAuth({
                 profile: config.profile,
                 region: config.region
@@ -45,6 +46,7 @@ export class BedrockProvider extends Model {
             : new AWSAuthProvider({
                 region: config.region
               });
+        const awsAuth = new ProviderAuthGuard(rawAuth);
 
         super({
             identity: config.identity,
@@ -65,13 +67,8 @@ export class BedrockProvider extends Model {
 
         if (config.credentials) {
             clientConfig.credentials = config.credentials;
-        } else if (awsAuth instanceof AWSSSOAuth) {
-            clientConfig.credentials = async () => {
-                const creds = await awsAuth.getCredentials();
-                return await creds();
-            };
-        } else if (awsAuth instanceof AWSAuthProvider) {
-            clientConfig.credentials = awsAuth.getCredentials();
+        } else if (typeof (awsAuth as any).getCredentials === 'function') {
+            clientConfig.credentials = (awsAuth as any).getCredentials();
         }
 
         this.client = new BedrockRuntimeClient(clientConfig);

@@ -10,7 +10,10 @@ export interface DeviceCodeInfo {
 /** Handler for interactive authentication flows. Implemented by the orchestrator. */
 export interface IAuthHandler {
     handleDeviceCodeAuth(info: DeviceCodeInfo): Promise<void>;
-    handleBrowserAuth(url: string): Promise<string>;
+    /** Open browser for OAuth. Returns the authorization code.
+     *  url — primary auth URL (automatic redirect to localhost listener)
+     *  manualUrl — fallback URL for manual copy-paste (if different) */
+    handleBrowserAuth(url: string, manualUrl?: string): Promise<string>;
     handleRefreshPrompt(message: string): Promise<boolean>;
     handleAuthError(error: Error): Promise<void>;
     onAuthenticationFailed(info: {

@@ -8,6 +8,7 @@ export * from './AWSAuthProvider.js';
 export * from './AWSSSOAuth.js';
 export * from './AwsCredentialsAuth.js';
 export * from './BrowserOAuthAuth.js';
+export * from './ProviderAuthGuard.js';
 export * from './AzureManagedIdentityAuth.js';
 export * from './AzureServicePrincipalAuth.js';
 export * from './GoogleAdcAuth.js';

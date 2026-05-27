@@ -27,6 +27,8 @@ export interface AuthConfig {
     authUrl?: string;
     tokenUrl?: string;
     redirectUri?: string;
+    /** Human-readable client name for OAuth metadata (e.g. "claude_code", "Armament"). */
+    clientName?: string;
 }
 
 export interface LimitsConfig {

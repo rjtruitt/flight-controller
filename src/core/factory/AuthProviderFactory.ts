@@ -66,7 +66,8 @@ export function createAuthProvider(authConfig: AuthConfig): IAuthProvider {
                 clientId: authConfig.clientId!,
                 clientSecret: authConfig.clientSecret,
                 redirectUri: authConfig.redirectUri,
-                scopes: authConfig.scopes!
+                scopes: authConfig.scopes!,
+                clientName: authConfig.clientName ?? 'Armament',
             });
 
         default:
