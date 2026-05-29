@@ -6,6 +6,17 @@ import { GeminiOpenAITranslator } from './GeminiOpenAITranslator.js';
 import { GeminiResponse } from './GeminiTypes.js';
 import { RateLimitError, AuthenticationError, ProviderError } from '../../core/errors/LLMError.js';
 
+/** Extracts retry delay in seconds from a Gemini error message. Checks RetryInfo JSON and "retry in Ns" text. */
+function extractRetrySeconds(errorMessage: string): number | undefined {
+    // Try JSON RetryInfo
+    const retryMatch = errorMessage.match(/"retryDelay"\s*:\s*"(\d+(?:\.\d+)?)s"/);
+    if (retryMatch) return parseFloat(retryMatch[1]);
+    // Try "retry in N.NNNs" text
+    const textMatch = errorMessage.match(/retry\s+in\s+(\d+(?:\.\d+)?)\s*s/i);
+    if (textMatch) return parseFloat(textMatch[1]);
+    return undefined;
+}
+
 /** Configuration for Google Gemini. Auth is handled via API key. */
 export interface GeminiProviderConfig extends Omit<ModelConfig, 'auth'> {
     apiKey: string;
@@ -89,17 +100,87 @@ export class GeminiProvider extends Model {
         } catch (error: any) {
             const errorMessage = error.message?.toLowerCase() || '';
 
+            // Catch JSON parse errors and provide context
+            if (errorMessage.includes('bad control character') || errorMessage.includes('json.parse') || errorMessage.includes('unexpected token')) {
+                console.error(`[GeminiProvider] JSON error — messages in context: ${(context as any).messages?.length ?? 0}`);
+                throw new ProviderError('gemini', `JSON parse error in Gemini response: ${error.message}`, { modelId: this.modelId }, undefined, error);
+            }
+
             if (errorMessage.includes('quota') || errorMessage.includes('limit')) {
-                if (errorMessage.includes('daily') || errorMessage.includes('session')) {
-                    throw new ProviderError('gemini', 'Session limit exceeded', { modelId: this.modelId }, undefined, error);
-                }
-                throw new RateLimitError('Rate limit exceeded', { provider: 'gemini' }, undefined, error);
+                const retryAfter = extractRetrySeconds(errorMessage);
+                const timer = retryAfter ? ` — retry in ${Math.ceil(retryAfter)}s` : '';
+                throw new RateLimitError(`Session limit exceeded${timer}`, { provider: 'gemini', retryAfter }, retryAfter, error);
             }
 
             if (errorMessage.includes('api key') || errorMessage.includes('unauthorized')) {
                 throw new AuthenticationError('Authentication failed: Invalid API key', { provider: 'gemini' });
             }
 
+            throw error;
+        }
+    }
+
+    /** Stream Gemini content using generateContentStream. */
+    protected async *sendStreamRequest(context: OpenAIContext): AsyncGenerator<import('../../core/types/Response.js').StreamChunk> {
+        const geminiRequest = this.translator.fromOpenAI(context);
+        const model = this.client.getGenerativeModel({ model: this.modelId });
+
+        const request: any = {
+            contents: geminiRequest.contents,
+            generationConfig: geminiRequest.generationConfig,
+        };
+        if (geminiRequest.systemInstruction) request.systemInstruction = geminiRequest.systemInstruction;
+        if (geminiRequest.tools) request.tools = geminiRequest.tools;
+
+        try {
+            const result = await model.generateContentStream(request);
+
+            for await (const chunk of result.stream) {
+                const parts = (chunk.candidates?.[0]?.content?.parts as any[]) || [];
+                const text = parts.map((p: any) => p.text || '').join('');
+                const content: import('../../core/types/Message.js').OpenAIContent[] = [];
+                if (text) {
+                    content.push({ type: 'text', text });
+                }
+                for (const p of parts) {
+                    if (p.functionCall) {
+                        // functionCall.args from Gemini SDK is already a parsed object.
+                        // Pass it as-is (matching OpenAI provider's pattern with JSON.parse).
+                        content.push({
+                            type: 'tool_call',
+                            id: p.functionCall.name || 'fc_' + Date.now(),
+                            name: p.functionCall.name,
+                            arguments: p.functionCall.args || {},
+                        });
+                    }
+                }
+                yield {
+                    content,
+                    done: false,
+                    usage: chunk.usageMetadata
+                        ? {
+                            inputTokens: chunk.usageMetadata.promptTokenCount ?? 0,
+                            outputTokens: chunk.usageMetadata.candidatesTokenCount ?? 0,
+                            totalTokens: chunk.usageMetadata.totalTokenCount ?? 0,
+                            cacheReadTokens: (chunk.usageMetadata as any).cachedContentTokenCount ?? 0,
+                            cacheWriteTokens: 0,
+                        }
+                        : undefined,
+                };
+            }
+
+            // Final done chunk with usage if available
+            yield {
+                content: [],
+                done: true,
+            };
+        } catch (error: any) {
+            const errorMessage = error.message?.toLowerCase() || '';
+            if (errorMessage.includes('quota') || errorMessage.includes('limit')) {
+                const retryAfter = extractRetrySeconds(errorMessage);
+                const timer = retryAfter ? ` — retry in ${Math.ceil(retryAfter)}s` : '';
+                throw new RateLimitError(`Session limit exceeded${timer}`, { provider: 'gemini', retryAfter }, retryAfter, error);
+            }
             throw error;
         }
     }

@@ -140,20 +140,39 @@ export function partFromOpenAI(content: OpenAIContent): GeminiPart | null {
     }
 
     if (content.type === 'tool_call') {
+        // functionCall.args must be a Struct (object), not a string
+        const args = typeof content.arguments === 'string'
+            ? (() => { try { return JSON.parse(content.arguments); } catch { return { value: content.arguments }; } })()
+            : content.arguments ?? {};
         return {
             functionCall: {
                 name: content.name || '',
-                args: content.arguments
+                args,
             }
         };
     }
 
     if (content.type === 'tool_result') {
         const contentStr = (content.content as string) || (content.result as string) || '{}';
+        // Tool result content is plain text, not JSON — wrap it in an object
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(contentStr);
+            // Gemini API requires functionResponse.response to be a Struct (object),
+            // not a plain string. If parsed is a string, wrap it in { result }.
+            if (typeof parsed === 'string') {
+                parsed = { result: parsed };
+            }
+        } catch {
+            // Log a preview of what failed so we can diagnose the source
+            const preview = contentStr.length > 200 ? contentStr.slice(0, 200) + '...' : contentStr;
+            console.error(`[GeminiPartConverter] Tool result JSON.parse failed — content preview (${contentStr.length} chars):`, JSON.stringify(preview));
+            parsed = { result: contentStr };
+        }
         return {
             functionResponse: {
                 name: content.toolCallId || '',
-                response: JSON.parse(contentStr)
+                response: parsed,
             }
         };
     }
