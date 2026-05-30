@@ -93,7 +93,7 @@ export class AnthropicOpenAITranslator implements IOpenAITranslator<AnthropicReq
             });
 
             anthropicMessages.push({
-                role: msg.role as 'user' | 'assistant',
+                role: ((msg.role as string) === 'tool' ? 'user' : msg.role) as 'user' | 'assistant',
                 content
             });
         }

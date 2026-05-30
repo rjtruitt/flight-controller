@@ -216,13 +216,13 @@ describe('GeminiProvider', () => {
                 .rejects.toThrow('Session limit exceeded');
         });
 
-        it('throws rate limit for quota/limit error without session keywords', async () => {
+        it('throws session limit for quota/limit error without session keywords', async () => {
             mockGenerateContent.mockRejectedValue(
                 new Error('Quota exceeded: too many requests')
             );
 
             await expect(provider.sendMessage(createContext()))
-                .rejects.toThrow('Rate limit exceeded');
+                .rejects.toThrow('Session limit exceeded');
         });
 
         it('throws authentication error for unauthorized/api key errors', async () => {
