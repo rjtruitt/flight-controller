@@ -38,6 +38,13 @@ export function contentToOpenAI(block: AnthropicContent | { type: 'text'; text: 
         };
     }
 
+    if (block.type === 'thinking') {
+        return {
+            type: 'thinking',
+            thinking: block.thinking,
+        };
+    }
+
     return { type: 'text', text: JSON.stringify(block) };
 }
 

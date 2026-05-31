@@ -9,7 +9,8 @@ export type AnthropicContent =
     | { type: 'text'; text: string; cache_control?: { type: 'ephemeral' } }
     | { type: 'image'; source: { type: 'base64' | 'url'; media_type: string; data: string } }
     | { type: 'tool_use'; id: string; name: string; input: any }
-    | { type: 'tool_result'; tool_use_id: string; content: string | any[] };
+    | { type: 'tool_result'; tool_use_id: string; content: string | any[] }
+    | { type: 'thinking'; thinking: string; signature: string };
 
 /** Request body sent to the Anthropic Messages API. */
 export interface AnthropicRequest {
